@@ -72,26 +72,26 @@ export function ComplaintsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchComplaints = async () => {
       if (!user?.id) return;
-      
+
       const token = localStorage.getItem('token');
       if (!token) return;
 
       try {
-        const endpoint = user.role === 'student' 
-          ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/student-complaints/${user.id}`
-          : `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/authority-complaints/${user.id}`;
+        const endpoint = user.role === 'student'
+          ? `http://localhost:3000/api/student-complaints/${user.id}`
+          : `http://localhost:3000/api/authority-complaints/${user.id}`;
 
         console.log('Fetching complaints from:', endpoint);
-        
+
         const response = await fetch(endpoint, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
         });
-        
+
         const data = await response.json();
         console.log('Complaints data:', data);
-        
+
         if (response.ok) {
           setComplaints(data);
         } else {
@@ -171,7 +171,7 @@ export function ComplaintsProvider({ children }: { children: ReactNode }) {
             reason,
             timestamp: new Date(),
           };
-          
+
           const statusUpdate: StatusUpdate = {
             id: `U${String(complaint.statusHistory.length + 1).padStart(3, '0')}`,
             status: 'escalated',

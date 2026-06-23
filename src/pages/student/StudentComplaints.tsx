@@ -30,7 +30,7 @@ const StudentComplaints = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -52,7 +52,7 @@ const StudentComplaints = () => {
       const token = localStorage.getItem('token');
       try {
         console.log('Fetching authorities with token:', token ? 'Token exists' : 'No token');
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/authorities`, {
+        const response = await fetch('http://localhost:3000/api/authorities', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -60,7 +60,7 @@ const StudentComplaints = () => {
         console.log('Response status:', response.status);
         const data = await response.json();
         console.log('Authorities data:', data);
-        
+
         if (response.ok) {
           setAuthorities(data);
           console.log('Authorities set in state:', data);
@@ -115,7 +115,7 @@ const StudentComplaints = () => {
 
     try {
       const token = localStorage.getItem('token');
-      
+
       // Prepare the complaint data - use consistent field names
       const complaintData = {
         title: formData.title,
@@ -131,7 +131,7 @@ const StudentComplaints = () => {
 
       console.log('Sending complaint data:', complaintData);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/register-complaint`, {
+      const response = await fetch(`http://localhost:3000/api/register-complaint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,9 +139,9 @@ const StudentComplaints = () => {
         },
         body: JSON.stringify(complaintData),
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok) {
         toast({
           title: 'Complaint Registered',
@@ -156,7 +156,7 @@ const StudentComplaints = () => {
           customCategory: '',
         });
         setIsDialogOpen(false);
-        
+
         // Refresh complaints list
         // After successful complaint registration, the complaints context will automatically update
       } else {
@@ -183,7 +183,7 @@ const StudentComplaints = () => {
     setDeletingId(complaintId);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/complaint/${complaintId}`, {
+      const response = await fetch(`http://localhost:3000/api/complaint/${complaintId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -364,17 +364,16 @@ const StudentComplaints = () => {
                     </div>
                     <div className="flex items-center gap-3">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          complaint.status === 'resolved'
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${complaint.status === 'resolved'
                             ? 'bg-success/10 text-success'
                             : complaint.status === 'in_progress'
-                            ? 'bg-info/10 text-info'
-                            : complaint.status === 'received'
-                            ? 'bg-secondary/10 text-secondary'
-                            : complaint.status === 'pending'
-                            ? 'bg-warning/10 text-warning'
-                            : 'bg-destructive/10 text-destructive'
-                        }`}
+                              ? 'bg-info/10 text-info'
+                              : complaint.status === 'received'
+                                ? 'bg-secondary/10 text-secondary'
+                                : complaint.status === 'pending'
+                                  ? 'bg-warning/10 text-warning'
+                                  : 'bg-destructive/10 text-destructive'
+                          }`}
                       >
                         {complaint.status}
                       </span>

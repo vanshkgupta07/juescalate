@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { signUp, supabaseSignIn, supabaseCheckAuth, signOut } = require('./auth');
 const { changePassword } = require('./changepass');
 const { registerComplaint } = require('./registerComplaint');
@@ -22,7 +23,9 @@ const corsOptions = {
     'http://localhost:8080',  // Additional localhost port
     'https://juescalate.vercel.app',  // Production frontend URL
     /\.vercel\.app$/,  // Any Vercel preview deployments
+    /\.onrender\.com$/,  // Any Render deployments
   ],
+
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
@@ -275,10 +278,17 @@ app.get('/api/authorities', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
+// Serve frontend static files in production
+const frontendPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(frontendPath));
+
+// Catch-all: serve index.html for any non-API route (React Router support)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
 
 app.listen(port, () => {
   console.log('Server is running on port ' + port);
-
 });
 
 module.exports = app;
