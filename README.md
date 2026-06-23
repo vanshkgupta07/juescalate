@@ -59,6 +59,76 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Node.js + Express
+- Supabase Auth + PostgreSQL
+
+## Local Supabase setup
+
+1. Create/open a Supabase project.
+2. In Supabase Dashboard, open SQL Editor and run:
+
+```sh
+backend/db/migrations/supabase_schema.sql
+```
+
+3. Create `backend/.env` from `backend/.env.example`:
+
+```sh
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+PORT=3000
+```
+
+Use the service role key only in the backend. Do not put it in frontend env files.
+
+4. Create root `.env` from `.env.example`:
+
+```sh
+VITE_API_URL=http://localhost:3000/api
+```
+
+5. Start backend and frontend:
+
+```sh
+cd backend
+npm install
+npm start
+```
+
+In another terminal:
+
+```sh
+npm install
+npm run dev
+```
+
+6. Create users through the backend signup endpoint or the in-app authority/admin flow. The backend creates matching Supabase Auth users and `user_profiles` rows.
+
+Example PowerShell requests after the backend is running:
+
+```powershell
+$body = @{
+  email = "authority@example.com"
+  password = "Authority@123"
+  role = "authority"
+  name = "Hostel Authority"
+} | ConvertTo-Json
+Invoke-WebRequest -UseBasicParsing http://localhost:3000/api/auth/signup -Method POST -ContentType "application/json" -Body $body
+```
+
+```powershell
+$body = @{
+  email = "student@example.com"
+  password = "Student@123"
+  role = "student"
+  name = "Demo Student"
+  enroll_num = "ENR001"
+  room_num = "101"
+  course = "btech"
+  year = "1"
+} | ConvertTo-Json
+Invoke-WebRequest -UseBasicParsing http://localhost:3000/api/auth/signup -Method POST -ContentType "application/json" -Body $body
+```
 
 ## How can I deploy this project?
 

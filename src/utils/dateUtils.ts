@@ -10,20 +10,40 @@ export const getGreeting = (): string => {
   }
 };
 
-export const formatDate = (date: Date): string => {
+export const formatDate = (date: Date | string | null | undefined): string => {
+  if (!date) {
+    return 'Invalid Date';
+  }
+
+  const parsedDate = typeof date === 'string' ? new Date(date) : date;
+
+  if (isNaN(parsedDate.getTime())) {
+    return 'Invalid Date';
+  }
+
   return new Intl.DateTimeFormat('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-  }).format(date);
+  }).format(parsedDate);
 };
 
-export const formatDateTime = (date: Date): string => {
+export const formatDateTime = (date: Date | string | null | undefined): string => {
+  if (!date) {
+    return 'Invalid Date';
+  }
+
+  const parsedDate = typeof date === 'string' ? new Date(date) : date;
+
+  if (isNaN(parsedDate.getTime())) {
+    return 'Invalid Date';
+  }
+
   return new Intl.DateTimeFormat('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
     hour: 'numeric',
     minute: 'numeric',
-  }).format(date);
+  }).format(parsedDate);
 };

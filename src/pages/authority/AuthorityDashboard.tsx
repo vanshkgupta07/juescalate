@@ -15,14 +15,15 @@ const AuthorityDashboard = () => {
     total: 0,
     resolved: 0,
     inProgress: 0,
-    pending: 0
+    pending: 0,
+    disputed: 0
   });
 
   useEffect(() => {
     const fetchComplaints = async () => {
       if (!user?.id) return;
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://juescalate-api.vercel.app/api'}/authority-complaints/${user.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/authority-complaints/${user.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -35,7 +36,8 @@ const AuthorityDashboard = () => {
         const resolved = data.filter(c => c.status === 'resolved').length;
         const inProgress = data.filter(c => c.status === 'in_progress').length;
         const pending = data.filter(c => c.status === 'pending').length;
-        setStats({ total, resolved, inProgress, pending });
+        const disputed = data.filter(c => c.status === 'disputed').length;
+        setStats({ total, resolved, inProgress, pending, disputed });
       }
     };
     fetchComplaints();
@@ -117,6 +119,18 @@ const AuthorityDashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Disputed</p>
+                  <h2 className="text-2xl font-bold mt-1 text-red-600">{stats.disputed}</h2>
+                </div>
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Recent Activity */}
@@ -150,13 +164,17 @@ const AuthorityDashboard = () => {
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           complaint.status === 'resolved'
                             ? 'bg-success/10 text-success'
-                            : complaint.status === 'in-progress'
+                            : complaint.status === 'in_progress'
                             ? 'bg-info/10 text-info'
                             : complaint.status === 'received'
                             ? 'bg-secondary/10 text-secondary'
+                            : complaint.status === 'disputed'
+                            ? 'bg-destructive/10 text-destructive'
                             : complaint.status === 'pending'
                             ? 'bg-warning/10 text-warning'
-                            : 'bg-destructive/10 text-destructive'
+                            : complaint.status === 'escalated'
+                            ? 'bg-warning/10 text-warning'
+                            : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {complaint.status}

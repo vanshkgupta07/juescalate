@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Direct API usage (no local services wrapper)
-const API_BASE = 'https://juescalate-api.vercel.app/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export type UserRole = 'student' | 'authority';
 
@@ -21,11 +21,13 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('hostel_user');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -36,42 +38,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const token = localStorage.getItem('token');
         const savedUser = localStorage.getItem('hostel_user');
+        const currentPath = window.location.pathname;
+        
+        // Don't validate on login page
+        if (currentPath === '/login') {
+          return;
+        }
         
         if (!token || !savedUser) {
           setUser(null);
           localStorage.removeItem('token');
           localStorage.removeItem('hostel_user');
+          if (currentPath !== '/') {
+            window.location.href = '/login';
+          }
           return;
         }
 
         // Set the user from localStorage immediately while we validate
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
         
-        const res = await fetch(`${API_BASE}/auth/check`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        // Add retry logic for token validation
+        let retryCount = 0;
+        const maxRetries = 3;
         
-        const data = await res.json();
-        if (res.ok && (data.profile || data.user)) {
-          const u = data.profile || data.user;
-          setUser(u);
-          localStorage.setItem('hostel_user', JSON.stringify(u));
-        } else {
-          // Only clear if the token is actually invalid
-          if (res.status === 401) {
-            setUser(null);
-            localStorage.removeItem('token');
-            localStorage.removeItem('hostel_user');
-            window.location.href = '/login'; // Redirect to login page
+        while (retryCount < maxRetries) {
+          try {
+            const res = await fetch(`${API_BASE}/auth/check`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Cache-Control': 'no-cache',
+              },
+            });
+            
+            if (res.ok) {
+              const data = await res.json();
+              if (data.profile || data.user) {
+                const u = data.profile || data.user;
+                setUser(u);
+                localStorage.setItem('hostel_user', JSON.stringify(u));
+                break; // Success, exit retry loop
+              }
+            } else if (res.status === 401) {
+              // Token is invalid
+              setUser(null);
+              localStorage.removeItem('token');
+              localStorage.removeItem('hostel_user');
+              if (currentPath !== '/') {
+                window.location.href = '/login';
+              }
+              break;
+            }
+            // If we get here, try again
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          } catch (error) {
+            console.error(`Auth check attempt ${retryCount + 1} failed:`, error);
+            retryCount++;
+            if (retryCount === maxRetries) {
+              // On network errors, keep the user logged in
+              console.log('Using cached user data due to network issues');
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
           }
         }
       } catch (error) {
-        console.error('Auth check error:', error);
-        // Don't clear user on network errors to prevent unnecessary logouts
-        if (error instanceof Response && error.status === 401) {
+        console.error('Auth validation error:', error);
+        // On JSON parse or other errors, clear everything to be safe
+        if (error instanceof SyntaxError) {
           setUser(null);
           localStorage.removeItem('token');
           localStorage.removeItem('hostel_user');
@@ -151,8 +187,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    setIsLoading(false);
+  }, [user]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

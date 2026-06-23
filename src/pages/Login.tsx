@@ -114,7 +114,12 @@ const Login = () => {
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
               
-              {/* Signup option removed */}
+              <div className="text-center text-sm">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-primary hover:underline font-semibold">
+                  Register / Sign Up
+                </Link>
+              </div>
             </div>
           </form>
         </CardContent>

@@ -14,8 +14,9 @@ const StudentDashboard = () => {
   const stats = {
     total: complaints.length,
     resolved: complaints.filter((c) => c.status === 'resolved').length,
-    inReview: complaints.filter((c) => c.status === 'in-progress' || c.status === 'received').length,
+    inReview: complaints.filter((c) => c.status === 'in_progress' || c.status === 'received').length,
     pending: complaints.filter((c) => c.status === 'pending').length,
+    disputed: complaints.filter((c) => c.status === 'disputed').length,
   };
 
   const statCards = [
@@ -46,6 +47,13 @@ const StudentDashboard = () => {
       icon: AlertCircle,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
+    },
+    {
+      title: 'Disputed',
+      value: stats.disputed,
+      icon: AlertCircle,
+      color: 'text-destructive',
+      bgColor: 'bg-destructive/10',
     },
   ];
 
@@ -105,8 +113,10 @@ const StudentDashboard = () => {
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           complaint.status === 'resolved'
                             ? 'bg-success/10 text-success'
-                            : complaint.status === 'in-progress'
+                            : complaint.status === 'in_progress'
                             ? 'bg-info/10 text-info'
+                            : complaint.status === 'disputed'
+                            ? 'bg-destructive/10 text-destructive'
                             : complaint.status === 'pending'
                             ? 'bg-warning/10 text-warning'
                             : 'bg-muted text-muted-foreground'

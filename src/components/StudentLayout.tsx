@@ -97,8 +97,9 @@ const StudentLayout = ({ children }: StudentLayoutProps) => {
           <div className="ml-auto flex items-center gap-4">
             <div className="hidden md:flex flex-col items-end">
               <span className="text-sm font-medium">{user?.name}</span>
-              <span className="text-xs text-muted-foreground">{user?.hostelBlock} - {user?.roomNumber}</span>
+              <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
             </div>
+
             <Button
               variant="ghost"
               size="icon"

@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
-export type ComplaintStatus = 'pending' | 'received' | 'in-progress' | 'resolved' | 'rejected' | 'escalated';
+export type ComplaintStatus = 'pending' | 'received' | 'in_progress' | 'resolved' | 'rejected' | 'escalated' | 'disputed';
 export type ComplaintPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type ComplaintCategory = 'electricity' | 'plumbing' | 'internet' | 'cleaning' | 'furniture' | 'other';
 
@@ -21,6 +22,13 @@ export interface StatusUpdate {
   updatedBy: string;
 }
 
+interface StudentDetails {
+  roomNumber?: string;
+  hostelBlock?: string;
+  course?: string;
+  year?: string;
+}
+
 export interface Complaint {
   id: string;
   studentId: string;
@@ -31,12 +39,18 @@ export interface Complaint {
   priority: ComplaintPriority;
   authorityId: string;
   authorityName: string;
+  authorityDepartment?: string;
   status: ComplaintStatus;
   createdAt: Date;
   attachments?: string[];
   statusHistory: StatusUpdate[];
   currentAuthorityLevel: number;
   escalationHistory: EscalationHistoryItem[];
+  studentDetails?: StudentDetails;
+  resolvedAt?: Date | null;
+  resolutionComment?: string;
+  isDisputed?: boolean;
+  disputeReason?: string;
 }
 
 interface ComplaintsContextType {
@@ -50,83 +64,46 @@ interface ComplaintsContextType {
 
 const ComplaintsContext = createContext<ComplaintsContextType | undefined>(undefined);
 
-// Mock initial complaints
-const mockComplaints: Complaint[] = [
-  {
-    id: 'C001',
-    studentId: '1',
-    studentName: 'Rahul Kumar',
-    title: 'Ceiling fan not working',
-    description: 'The ceiling fan in my room has stopped working since yesterday. It makes a humming sound but does not rotate.',
-    category: 'electricity',
-    priority: 'high',
-    authorityId: '3',
-    authorityName: 'Amit Singh',
-    status: 'in-progress',
-    createdAt: new Date('2024-01-15'),
-    currentAuthorityLevel: 1,
-    escalationHistory: [],
-    statusHistory: [
-      {
-        id: 'U001',
-        status: 'received',
-        remarks: 'Complaint received. Will inspect within 24 hours.',
-        updatedAt: new Date('2024-01-15'),
-        updatedBy: 'Amit Singh',
-      },
-      {
-        id: 'U002',
-        status: 'in-progress',
-        remarks: 'Technician assigned. Parts ordered.',
-        updatedAt: new Date('2024-01-16'),
-        updatedBy: 'Amit Singh',
-      },
-    ],
-  },
-  {
-    id: 'C002',
-    studentId: '1',
-    studentName: 'Rahul Kumar',
-    title: 'Water leakage in bathroom',
-    description: 'There is continuous water leakage from the bathroom tap even when fully closed.',
-    category: 'plumbing',
-    priority: 'medium',
-    authorityId: '2',
-    authorityName: 'Dr. Priya Sharma',
-    status: 'escalated',
-    createdAt: new Date('2024-01-10'),
-    currentAuthorityLevel: 2,
-    escalationHistory: [
-      {
-        fromLevel: 1,
-        toLevel: 2,
-        fromAuthority: 'Mr. Raj Kumar',
-        toAuthority: 'Dr. Priya Sharma',
-        reason: 'Issue requires higher level approval',
-        timestamp: new Date('2024-01-11'),
-      }
-    ],
-    statusHistory: [
-      {
-        id: 'U003',
-        status: 'received',
-        remarks: 'Forwarded to plumber.',
-        updatedAt: new Date('2024-01-10'),
-        updatedBy: 'Mr. Raj Kumar',
-      },
-      {
-        id: 'U004',
-        status: 'escalated',
-        remarks: 'Issue requires higher level approval',
-        updatedAt: new Date('2024-01-11'),
-        updatedBy: 'Mr. Raj Kumar',
-      },
-    ],
-  },
-];
-
 export function ComplaintsProvider({ children }: { children: ReactNode }) {
-  const [complaints, setComplaints] = useState<Complaint[]>(mockComplaints);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const { user } = useAuth();
+
+  // Fetch complaints based on user role
+  useEffect(() => {
+    const fetchComplaints = async () => {
+      if (!user?.id) return;
+      
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const endpoint = user.role === 'student' 
+          ? `http://localhost:3000/api/student-complaints/${user.id}`
+          : `http://localhost:3000/api/authority-complaints/${user.id}`;
+
+        console.log('Fetching complaints from:', endpoint);
+        
+        const response = await fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        const data = await response.json();
+        console.log('Complaints data:', data);
+        
+        if (response.ok) {
+          setComplaints(data);
+        } else {
+          console.error('Error fetching complaints:', data);
+        }
+      } catch (error) {
+        console.error('Error fetching complaints:', error);
+      }
+    };
+
+    fetchComplaints();
+  }, [user?.id, user?.role]);
 
   const addComplaint = (newComplaint: Omit<Complaint, 'id' | 'createdAt' | 'statusHistory' | 'currentAuthorityLevel' | 'escalationHistory'>) => {
     const complaint: Complaint = {

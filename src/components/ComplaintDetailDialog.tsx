@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useComplaints, ComplaintStatus } from '@/contexts/ComplaintsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -9,7 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { formatDateTime } from '@/utils/dateUtils';
+const formatDate = (date: Date | string | null | undefined) => {
+  if (!date) return 'Not available';
+  try {
+    return new Date(date).toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+  } catch (error) {
+    console.error('Date formatting error:', error);
+    return 'Invalid date';
+  }
+};
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface ComplaintDetailDialogProps {
@@ -19,7 +30,7 @@ interface ComplaintDetailDialogProps {
   isAuthority: boolean;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://juescalate-api.vercel.app/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: ComplaintDetailDialogProps) => {
   const { complaints, updateComplaintStatus } = useComplaints();
@@ -32,10 +43,73 @@ const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: Comp
   const [escalationReason, setEscalationReason] = useState('');
   const [isDisputing, setIsDisputing] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
+  const [statusHistory, setStatusHistory] = useState<any[]>([]);
+
+  // Fetch status history when complaint is opened
+  const fetchStatusHistory = async () => {
+    if (!complaintId) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/complaint-status-history/${complaintId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setStatusHistory(data);
+      } else {
+        console.error('Failed to fetch status history:', data);
+        toast({
+          title: 'Error',
+          description: 'Failed to load status history',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching status history:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load status history',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  console.log('ComplaintDetailDialog - complaints:', complaints);
+  console.log('ComplaintDetailDialog - complaintId:', complaintId);
+  
+  // Fetch status history when complaint changes
+  useEffect(() => {
+    if (open && complaintId) {
+      fetchStatusHistory();
+    }
+  }, [open, complaintId]);
 
   const complaint = complaints.find((c) => c.id === complaintId);
+  console.log('ComplaintDetailDialog - found complaint:', complaint);
 
-  if (!complaint) return null;
+  if (!complaint) {
+    console.log('ComplaintDetailDialog - no complaint found, returning null');
+    return null;
+  }
+
+  // Ensure all required properties exist with defaults and correct format
+  const normalizedComplaint = {
+    ...complaint,
+    statusHistory: complaint.statusHistory || [],
+    escalationHistory: Array.isArray(complaint.escalationHistory) 
+      ? complaint.escalationHistory 
+      : complaint.escalationHistory 
+        ? JSON.parse(complaint.escalationHistory)
+        : [],
+    currentAuthorityLevel: complaint.currentAuthorityLevel || 1,
+    studentDetails: complaint.studentDetails || {},
+    resolvedAt: complaint.resolvedAt || null,
+    resolutionComment: complaint.resolutionComment || '',
+    isDisputed: complaint.isDisputed || false,
+    disputeReason: complaint.disputeReason || ''
+  };
 
   const handleSubmitUpdate = async () => {
     if (!remarks.trim()) {
@@ -183,7 +257,7 @@ const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: Comp
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
+    switch (priority?.toLowerCase()) {
       case 'urgent':
         return 'bg-destructive text-destructive-foreground';
       case 'high':
@@ -216,21 +290,69 @@ const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: Comp
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Student:</span>
-                <p className="font-medium">{complaint.studentName}</p>
+              <div className="space-y-4">
+                <div>
+                  <span className="text-muted-foreground">Student Information</span>
+                  <p className="font-medium">{normalizedComplaint.studentName || 'N/A'}</p>
+                  {normalizedComplaint.studentDetails && (
+                    <div className="text-xs space-y-1 mt-1 text-muted-foreground">
+                      {normalizedComplaint.studentDetails.hostelBlock && (
+                        <p>Hostel Block: {normalizedComplaint.studentDetails.hostelBlock}</p>
+                      )}
+                      {normalizedComplaint.studentDetails.roomNumber && (
+                        <p>Room Number: {normalizedComplaint.studentDetails.roomNumber}</p>
+                      )}
+                      {normalizedComplaint.studentDetails.course && (
+                        <p>Course: {normalizedComplaint.studentDetails.course}</p>
+                      )}
+                      {normalizedComplaint.studentDetails.year && (
+                        <p>Year: {normalizedComplaint.studentDetails.year}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <span className="text-muted-foreground">Authority Information</span>
+                  <p className="font-medium">{normalizedComplaint.authorityName || 'Unassigned'}</p>
+                  {normalizedComplaint.authorityDepartment && (
+                    <p className="text-xs text-muted-foreground">Department: {normalizedComplaint.authorityDepartment}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <span className="text-muted-foreground">Assigned To:</span>
-                <p className="font-medium">{complaint.authorityName}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Submitted:</span>
-                <p className="font-medium">{formatDateTime(complaint.createdAt)}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Current Status:</span>
-                <p className="font-medium capitalize">{complaint.status}</p>
+
+              <div className="space-y-4">
+                <div>
+                  <span className="text-muted-foreground">Submission Details</span>
+                  <p className="font-medium">
+                    {normalizedComplaint.createdAt 
+                      ? new Date(normalizedComplaint.createdAt).toLocaleString('en-US', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })
+                      : 'Date not available'
+                    }
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground">Current Status</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant={normalizedComplaint.status === 'resolved' ? 'default' : 'secondary'}>
+                      {normalizedComplaint.status || 'pending'}
+                    </Badge>
+                    {normalizedComplaint.resolvedAt && (
+                      <span className="text-xs text-muted-foreground">
+                        Resolved on: {new Date(normalizedComplaint.resolvedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  {normalizedComplaint.resolutionComment && (
+                    <p className="text-sm mt-2 text-muted-foreground">
+                      Resolution: {normalizedComplaint.resolutionComment}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -243,21 +365,51 @@ const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: Comp
           <Separator />
 
           {/* Status History */}
-              {/* Status History */}
+              {/* Status History Timeline */}
           <div>
-            <h4 className="font-semibold mb-3">Status History</h4>
-            {complaint.statusHistory.length > 0 ? (
-              <div className="space-y-3">
-                {complaint.statusHistory.map((update) => (
-                  <div key={update.id} className="p-4 bg-muted/30 rounded-lg space-y-2">
-                    <div className="flex justify-between items-start">
-                      <span className="font-medium capitalize">{update.status}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(update.updatedAt)}
-                      </span>
+            <h4 className="font-semibold mb-3">Status Timeline</h4>
+            {statusHistory.length > 0 ? (
+              <div className="relative space-y-0">
+                {statusHistory.map((update, index) => (
+                  <div key={update.id} className="relative pl-8 pb-8">
+                    {/* Timeline line */}
+                    {index < statusHistory.length - 1 && (
+                      <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-border" />
+                    )}
+                    {/* Timeline dot */}
+                    <div className={`absolute left-0 top-2 h-6 w-6 rounded-full border-2 
+                      ${update.status === 'resolved' ? 'bg-success border-success' :
+                        update.status === 'disputed' ? 'bg-destructive border-destructive' :
+                        update.status === 'escalated' ? 'bg-warning border-warning' :
+                        'bg-background border-border'} 
+                      flex items-center justify-center`}
+                    >
+                      <div className={`h-3 w-3 rounded-full 
+                        ${update.status === 'resolved' ? 'bg-success-foreground' :
+                          update.status === 'disputed' ? 'bg-destructive-foreground' :
+                          update.status === 'escalated' ? 'bg-warning-foreground' :
+                          'bg-foreground'}`} 
+                      />
                     </div>
-                    <p className="text-sm">{update.remarks}</p>
-                    <p className="text-xs text-muted-foreground">Updated by: {update.updatedBy}</p>
+                    {/* Content */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium capitalize">
+                          {update.status.replace(/_/g, ' ')}
+                          {update.user_profiles?.authority_level && 
+                            ` (Level ${update.user_profiles.authority_level})`
+                          }
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(update.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm">{update.remarks}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {update.user_profiles?.role === 'authority' ? 'Updated by' : 'Action by'}: {update.user_profiles?.name || 'Unknown'} 
+                        {update.user_profiles?.department && ` (${update.user_profiles.department})`}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -273,20 +425,20 @@ const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: Comp
             <h4 className="font-semibold mb-3">Complaint Tracking</h4>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Badge variant="outline">Level {complaint.currentAuthorityLevel}</Badge>
-                <span className="text-sm">Currently handled by {complaint.authorityName}</span>
+                <Badge variant="outline">Level {normalizedComplaint.currentAuthorityLevel}</Badge>
+                <span className="text-sm">Currently handled by {normalizedComplaint.authorityName}</span>
               </div>
 
-              {complaint.escalationHistory.length > 0 ? (
+              {normalizedComplaint.escalationHistory.length > 0 ? (
                 <div className="space-y-3 mt-3">
-                  {complaint.escalationHistory.map((escalation, index) => (
+                  {normalizedComplaint.escalationHistory.map((escalation, index) => (
                     <div key={index} className="p-4 bg-muted/30 rounded-lg space-y-2">
                       <div className="flex justify-between items-start">
                         <span className="font-medium">
                           Level {escalation.fromLevel} → Level {escalation.toLevel}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {formatDateTime(escalation.timestamp)}
+                          {formatDate(escalation.timestamp)}
                         </span>
                       </div>
                       <p className="text-sm">
@@ -319,7 +471,7 @@ const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: Comp
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="received">Received</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
                       <SelectItem value="resolved">Resolved</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
                       <SelectItem value="escalated">Escalated</SelectItem>
@@ -345,9 +497,11 @@ const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: Comp
 
                   <AlertDialog open={isEscalating} onOpenChange={setIsEscalating}>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="flex-1">
-                        Escalate
-                      </Button>
+                      {normalizedComplaint.currentAuthorityLevel < 3 && (
+                        <Button variant="outline" className="flex-1">
+                          Escalate
+                        </Button>
+                      )}
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>

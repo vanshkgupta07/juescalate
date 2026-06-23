@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useComplaints } from '@/contexts/ComplaintsContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -8,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Eye } from 'lucide-react';
+import { Plus, Eye, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatDate } from '@/utils/dateUtils';
 import StudentLayout from '@/components/StudentLayout';
 import ComplaintDetailDialog from '@/components/ComplaintDetailDialog';
@@ -33,13 +35,15 @@ const StudentComplaints = () => {
     title: '',
     description: '',
     category: 'electricity' as ComplaintCategory,
-    priority: 'medium' as ComplaintPriority,
+    priority: 'high' as ComplaintPriority,
     authorityId: '',
     customCategory: '',
   });
 
-  const [complaints, setComplaints] = useState([]);
+  const { complaints } = useComplaints();
   const [authorities, setAuthorities] = useState<Authority[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Fetch authorities
   useEffect(() => {
@@ -48,7 +52,7 @@ const StudentComplaints = () => {
       const token = localStorage.getItem('token');
       try {
         console.log('Fetching authorities with token:', token ? 'Token exists' : 'No token');
-        const response = await fetch('https://juescalate-api.vercel.app/api/authorities', {
+        const response = await fetch('http://localhost:3000/api/authorities', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -79,34 +83,21 @@ const StudentComplaints = () => {
     };
 
     fetchAuthorities();
-  }, [user?.id]);
+  }, [user?.id, toast]);
 
-  useEffect(() => {
-    const fetchComplaints = async () => {
-      if (!user?.id) return;
-      const token = localStorage.getItem('token');
-      const response = await fetch(`https://juescalate-api.vercel.app/api/student-complaints/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setComplaints(data);
-      }
-    };
-    fetchComplaints();
-  }, [user?.id]);
+  // Remove the complaints fetch since we're using the complaints context now
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
-      if (!formData.authorityId) {
+    if (!formData.authorityId) {
       toast({
         title: 'Error',
         description: 'Please select an authority to assign the complaint to.',
         variant: 'destructive',
       });
+      setIsLoading(false);
       return;
     }
 
@@ -116,30 +107,41 @@ const StudentComplaints = () => {
         description: 'Please specify the category.',
         variant: 'destructive',
       });
+      setIsLoading(false);
       return;
-    }    const authority = authorities.find((a) => a.id === formData.authorityId);
+    }
+
+    const authority = authorities.find((a) => a.id === formData.authorityId);
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://juescalate-api.vercel.app/api/register-complaint`, {
+      
+      // Prepare the complaint data - use consistent field names
+      const complaintData = {
+        title: formData.title,
+        description: formData.description,
+        studentId: user?.id || '',
+        studentName: user?.name || '',
+        authorityId: formData.authorityId, // Use authorityId consistently
+        authorityName: authority?.name || '',
+        status: 'pending',
+        category: formData.category === 'other' ? formData.customCategory : formData.category,
+        priority: formData.priority,
+      };
+
+      console.log('Sending complaint data:', complaintData);
+
+      const response = await fetch(`http://localhost:3000/api/register-complaint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: formData.title,
-          description: formData.description,
-          studentId: user?.id || '',
-          studentName: user?.name || '',
-          authority_id: formData.authorityId,
-          authorityName: authority?.name || '',
-          status: 'pending',
-          category: formData.category === 'other' ? formData.customCategory : formData.category,
-          priority: formData.priority,
-        }),
+        body: JSON.stringify(complaintData),
       });
+      
       const data = await response.json();
+      
       if (response.ok) {
         toast({
           title: 'Complaint Registered',
@@ -154,11 +156,51 @@ const StudentComplaints = () => {
           customCategory: '',
         });
         setIsDialogOpen(false);
-        // Optionally, refresh complaints list here
+        
+        // Refresh complaints list
+        // After successful complaint registration, the complaints context will automatically update
       } else {
+        console.error('Server error response:', data);
         toast({
           title: 'Error',
           description: data.error || 'Failed to register complaint.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      toast({
+        title: 'Error',
+        description: 'An error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (complaintId: string) => {
+    setDeletingId(complaintId);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/complaint/${complaintId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast({
+          title: 'Complaint Deleted',
+          description: 'Your complaint has been deleted successfully.',
+        });
+        // Reload to refresh the list
+        window.location.reload();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to delete complaint.',
           variant: 'destructive',
         });
       }
@@ -168,6 +210,8 @@ const StudentComplaints = () => {
         description: 'An error occurred. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -180,11 +224,8 @@ const StudentComplaints = () => {
             <p className="text-muted-foreground mt-1">
               View and manage your hostel complaints
             </p>
-            {process.env.NODE_ENV === 'development' && (
-              <div className="text-xs text-muted-foreground mt-1">
-                Debug: {authorities.length} authorities loaded
-              </div>
-            )}
+
+
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -289,8 +330,8 @@ const StudentComplaints = () => {
                   </Select>
                 </div>
 
-                <Button type="submit" className="w-full">
-                  Submit Complaint
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Submitting...' : 'Submit Complaint'}
                 </Button>
               </form>
             </DialogContent>
@@ -326,7 +367,7 @@ const StudentComplaints = () => {
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           complaint.status === 'resolved'
                             ? 'bg-success/10 text-success'
-                            : complaint.status === 'in-progress'
+                            : complaint.status === 'in_progress'
                             ? 'bg-info/10 text-info'
                             : complaint.status === 'received'
                             ? 'bg-secondary/10 text-secondary'
@@ -341,11 +382,46 @@ const StudentComplaints = () => {
                         variant="ghost"
                         size="sm"
                         className="gap-2"
-                        onClick={() => setSelectedComplaintId(complaint.id)}
+                        onClick={() => {
+                          console.log('View button clicked for complaint:', complaint);
+                          setSelectedComplaintId(complaint.id);
+                        }}
                       >
                         <Eye className="h-4 w-4" />
                         View
                       </Button>
+                      {complaint.status !== 'resolved' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              disabled={deletingId === complaint.id}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              {deletingId === complaint.id ? 'Deleting...' : 'Delete'}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Complaint Delete Karen?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Kya aap sach mein yeh complaint delete karna chahte hain? Yeh action undo nahi ho sakta.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(complaint.id)}
+                                className="bg-destructive hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
                 ))}
