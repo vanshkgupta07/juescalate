@@ -78,8 +78,8 @@ export function ComplaintsProvider({ children }: { children: ReactNode }) {
 
       try {
         const endpoint = user.role === 'student' 
-          ? `http://localhost:3000/api/student-complaints/${user.id}`
-          : `http://localhost:3000/api/authority-complaints/${user.id}`;
+          ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/student-complaints/${user.id}`
+          : `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/authority-complaints/${user.id}`;
 
         console.log('Fetching complaints from:', endpoint);
         
