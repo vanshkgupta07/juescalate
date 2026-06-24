@@ -220,7 +220,9 @@ const StudentComplaints = () => {
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">My Complaints</h1>
+            <h1 className="text-3xl font-bold text-red-500">
+  TEST VANSH 999
+</h1>
             <p className="text-muted-foreground mt-1">
               View and manage your hostel complaints
             </p>
