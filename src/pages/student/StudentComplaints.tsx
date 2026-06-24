@@ -52,7 +52,7 @@ const StudentComplaints = () => {
       const token = localStorage.getItem('token');
       try {
         console.log('Fetching authorities with token:', token ? 'Token exists' : 'No token');
-        const response = await fetch('http:///api/api/authorities', {
+        const response = await fetch('/api/authorities', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -131,7 +131,7 @@ const StudentComplaints = () => {
 
       console.log('Sending complaint data:', complaintData);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/register-complaint`, {
+      const response = await fetch('/api/authorities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +183,7 @@ const StudentComplaints = () => {
     setDeletingId(complaintId);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/complaint/${complaintId}`, {
+      const response = await fetch('/api/authorities', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -223,6 +223,13 @@ const StudentComplaints = () => {
             <h1 className="text-3xl font-bold text-red-500">
   TEST VANSH 999
 </h1>
+<p style={{ color: "blue" }}>
+  User: {user?.name}
+</p>
+
+<p style={{ color: "green" }}>
+  Authorities: {authorities.length}
+</p>
             <p className="text-muted-foreground mt-1">
               View and manage your hostel complaints
             </p>
