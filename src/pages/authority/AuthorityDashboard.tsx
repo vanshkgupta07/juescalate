@@ -23,7 +23,7 @@ const AuthorityDashboard = () => {
     const fetchComplaints = async () => {
       if (!user?.id) return;
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http:///api/api'}/authority-complaints/${user.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/authority-complaints/${user.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

@@ -52,7 +52,7 @@ const StudentComplaints = () => {
       const token = localStorage.getItem('token');
       try {
         console.log('Fetching authorities with token:', token ? 'Token exists' : 'No token');
-        const response = await fetch('http:///api/api/authorities', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/authorities`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

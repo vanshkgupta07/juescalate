@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Building2 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http:///api/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const Register = () => {
   const [email, setEmail] = useState('');

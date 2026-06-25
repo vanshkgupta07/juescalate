@@ -67,6 +67,7 @@ const ComplaintsContext = createContext<ComplaintsContextType | undefined>(undef
 export function ComplaintsProvider({ children }: { children: ReactNode }) {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const { user } = useAuth();
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
   // Fetch complaints based on user role
   useEffect(() => {
@@ -78,8 +79,8 @@ export function ComplaintsProvider({ children }: { children: ReactNode }) {
 
       try {
         const endpoint = user.role === 'student'
-          ? `http:///api/api/student-complaints/${user.id}`
-          : `http:///api/api/authority-complaints/${user.id}`;
+          ? `${API_BASE}/student-complaints/${user.id}`
+          : `${API_BASE}/authority-complaints/${user.id}`;
 
         console.log('Fetching complaints from:', endpoint);
 

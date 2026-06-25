@@ -30,7 +30,7 @@ interface ComplaintDetailDialogProps {
   isAuthority: boolean;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http:///api/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const ComplaintDetailDialog = ({ complaintId, open, onClose, isAuthority }: ComplaintDetailDialogProps) => {
   const { complaints, updateComplaintStatus } = useComplaints();

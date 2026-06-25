@@ -21,6 +21,7 @@ const corsOptions = {
     'http://localhost:5173',  // Vite default dev server
     'http://localhost:3000',  // Common local development port
     'http://localhost:8080',  // Additional localhost port
+    'http://localhost:8081',  // Vite dev server actual port
     'https://juescalate.vercel.app',  // Production frontend URL
     /\.vercel\.app$/,  // Any Vercel preview deployments
     /\.onrender\.com$/,  // Any Render deployments
